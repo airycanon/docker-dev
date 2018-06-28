@@ -1,0 +1,77 @@
+version: '3'
+services:
+    nginx:
+        image: nginx:alpine
+        ports:
+            - "80:80"
+        volumes:
+            - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+            - ./nginx/fastcgi.conf:/etc/nginx/fastcgi.conf
+            - ./nginx/conf.d:/etc/nginx/conf.d
+            - ./nginx/data:/data
+            - ./projects:/projects
+            - /etc/localtime:/etc/localtime:ro
+        user: "root"
+        networks:
+            devnet:
+                ipv4_address: 172.16.0.7
+    php:
+        image: php:7.1-dev
+        build: ./php
+        volumes:
+            - ./projects:/projects
+            - ./php/php.ini:/usr/local/etc/php/php.ini
+            - /etc/localtime:/etc/localtime:ro
+        networks:
+            - devnet
+        user: "1000"
+        extra_hosts:
+            - "mp-api.local:172.16.0.7"
+            - "mp-api-ng.local:172.16.0.7"
+    mysql:
+        image: mysql:5.7
+        ports:
+            - "3306:3306"
+        environment:
+            - MYSQL_ROOT_PASSWORD=123456
+        volumes:
+            - ./mysql/init:/docker-entrypoint-initdb.d/
+            - ./mysql/data:/var/lib/mysql
+            - /etc/localtime:/etc/localtime:ro
+        networks:
+            - devnet
+    redis:
+        image: redis:alpine
+        ports:
+          - "6379:6379"
+        networks:
+            - devnet
+    elasticsearch:
+        image: elasticsearch:5.6.8-alpine
+        volumes:
+            - ./elasticsearch/data:/usr/share/elasticsearch/data
+            - ./elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+            - ./elasticsearch/ik:/usr/share/elasticsearch/plugins/ik
+            - /etc/localtime:/etc/localtime:ro
+        ports:
+            - "9200:9200"
+        networks:
+            - devnet
+    postgres:
+        image: postgres:alpine
+        ports:
+            - "5432:5432"
+        volumes:
+            - ./postgres/data:/var/lib/postgresql
+        environment:
+            - POSTGRES_USER=root
+            - POSTGRES_PASSWORD=123456
+        networks:
+            - devnet
+networks:
+  devnet:
+        ipam:
+            driver: default
+            config:
+              -
+                subnet: 172.16.0.0/16
